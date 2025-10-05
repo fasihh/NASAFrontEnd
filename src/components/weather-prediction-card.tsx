@@ -5,6 +5,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Input } from "./ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { useWeatherContext } from "@/context/WeatherContext";
 
 const cities = [
   { name: "Karachi", country: "Pakistan", lat: 24.8607, lng: 67.0011 },
@@ -35,9 +37,9 @@ const cities = [
 ];
 
 export function WeatherPredictionCard() {
+  const { setData } = useWeatherContext();
   const [date, setDate] = useState<Date>();
   const [isOpen, setIsOpen] = useState(false);
-  const [inputValue, setInputValue] = useState("");
   const [selectedCity, setSelectedCity] = useState<string>("");
   
   // Weather parameter states
@@ -45,6 +47,52 @@ export function WeatherPredictionCard() {
   const [precipitation, setPrecipitation] = useState<string>("");
   const [windSpeed, setWindSpeed] = useState<string>("");
   const [humidity, setHumidity] = useState<string>("");
+
+  const mutation = useMutation({
+    mutationFn: async (formData: any) => {
+      const res = await fetch("http://localhost:8080/predict", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (!res.ok) {
+        throw new Error("Network response was not ok");
+      }
+
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      console.log("Prediction successful:", data);
+      setData(data);   
+    },
+    onError: (error: any) => {
+      console.error("Prediction error:", error);
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Collect all form data
+    const city = cities.find(c => `${c.name}, ${c.country}` === selectedCity)
+    const formData = {
+      lat: city!.lat,
+      lon: city!.lng,
+      year: date ? date.getFullYear() : null,
+      doy: date ? Math.floor((date.getTime() - new Date(date.getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24)) : null,
+      threshold: {
+        T2M: parseFloat(temperature),
+        PRECTOTCORR: parseFloat(precipitation),
+        wind_speed: parseFloat(windSpeed),
+        QV2M: parseFloat(humidity),
+      },
+    };
+
+    mutation.mutate(formData);
+  };
 
   const formatDate = (date: Date) => {
     return `${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getDate().toString().padStart(2, '0')}/${date.getFullYear()}`;
@@ -64,18 +112,13 @@ export function WeatherPredictionCard() {
   };
 
   return (
-    <div className="bg-[#F8F5EF] rounded-2xl p-8 shadow-lg border-2 border-[#A3A68A]/30 max-w-full mx-auto">
+    <div className="bg-[#F8F5EF] rounded-2xl p-8 shadow-lg border-2 border-[#A3A68A]/30 mx-auto">
       <div className="flex items-center gap-2 mb-8">
         <TrendingUp className="w-6 h-6 text-[#A3A68A]" />
         <h3 className="text-[#A3A68A] text-lg">Weather Prediction</h3>
       </div>
-      
-      {/* Horizontal Layout with two sections */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        
-        {/* Left Section: Date & Location Based Prediction */}
-        <div className="space-y-6">
-          <h4 className="text-[#A3A68A] font-medium text-sm">Date & Location Forecast</h4>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
         {/* City Selection */}
         <div className="space-y-3">
           <label className="text-[#A3A68A]">Select City</label>
@@ -105,20 +148,6 @@ export function WeatherPredictionCard() {
         {/* Date Selection */}
         <div className="space-y-3">
           <label className="text-[#A3A68A]">Select Future Date</label>
-          
-          {/* Manual Date Input */}
-          <div className="relative">
-            <Input
-              type="text"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder="mm/dd/yyyy"
-              className="w-full bg-white border-[#A3A68A]/30 text-[#A3A68A] placeholder:text-[#A3A68A]/50 pr-10"
-            />
-            <CalendarIcon className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[#A3A68A]/50" />
-          </div>
-          
-          {/* Calendar Picker */}
           <Popover open={isOpen} onOpenChange={setIsOpen}>
             <PopoverTrigger asChild>
               <Button
@@ -126,7 +155,7 @@ export function WeatherPredictionCard() {
                 className="w-full justify-center text-center bg-white border-[#A3A68A]/30 text-[#A3A68A] hover:bg-gray-50"
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {date ? formatDate(date) : "Pick from Calendar"}
+                {date ? date.toDateString() : "Pick from Calendar"}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0 bg-white border-[#A3A68A]/30" align="start">
@@ -134,142 +163,69 @@ export function WeatherPredictionCard() {
                 mode="single"
                 selected={date}
                 onSelect={(newDate) => {
-                  if (newDate) {
-                    setDate(newDate);
-                    setInputValue(formatDate(newDate));
-                    setIsOpen(false);
-                  }
+                  setDate(newDate);
+                  setIsOpen(false);
                 }}
-                disabled={(date) => date < new Date()}
-                initialFocus
+                // disabled={(date) => date < new Date()}
+                // initialFocus
                 className="rounded-md border-0"
               />
             </PopoverContent>
           </Popover>
-          
-          <p className="text-xs text-[#A3A68A]/70">
-            Predictions available up to 3 months ahead
-          </p>
-        </div>
-        
-        {/* Prediction Display */}
-        <div className="bg-white/70 rounded-xl p-6 text-center min-h-[120px] flex flex-col justify-center border border-[#A3A68A]/20">
-          <Cloud className="w-12 h-12 text-[#A3A68A]/60 mx-auto mb-3" />
-          {selectedCity && date ? (
-            <div className="space-y-2">
-              <p className="text-[#A3A68A] font-medium">{selectedCity}</p>
-              <p className="text-[#A3A68A]/80 text-sm">{formatDisplayDate(date)}</p>
-              <p className="text-[#A3A68A]/60 text-xs">Weather forecast will appear here</p>
-            </div>
-          ) : (
-            <p className="text-[#A3A68A]/60 text-sm">Select city and date</p>
-          )}
-        </div>
         </div>
 
-        {/* Right Section: Weather Parameters Analysis */}
-        <div className="space-y-6">
-          <h4 className="text-[#A3A68A] font-medium text-sm">Parameter Probability Analysis</h4>
-          
-          {/* Weather Parameter Inputs */}
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              {/* Temperature Input */}
-              <div className="space-y-2">
-                <label className="text-[#A3A68A] text-xs">Temperature (°C)</label>
-                <Input
-                  type="number"
-                  value={temperature}
-                  onChange={(e) => setTemperature(e.target.value)}
-                  placeholder="25"
-                  className="bg-white border-[#A3A68A]/30 text-[#A3A68A] placeholder:text-[#A3A68A]/50"
-                />
-              </div>
-              
-              {/* Precipitation Input */}
-              <div className="space-y-2">
-                <label className="text-[#A3A68A] text-xs">Precipitation (mm)</label>
-                <Input
-                  type="number"
-                  value={precipitation}
-                  onChange={(e) => setPrecipitation(e.target.value)}
-                  placeholder="5"
-                  className="bg-white border-[#A3A68A]/30 text-[#A3A68A] placeholder:text-[#A3A68A]/50"
-                />
-              </div>
-              
-              {/* Wind Speed Input */}
-              <div className="space-y-2">
-                <label className="text-[#A3A68A] text-xs">Wind Speed (km/h)</label>
-                <Input
-                  type="number"
-                  value={windSpeed}
-                  onChange={(e) => setWindSpeed(e.target.value)}
-                  placeholder="15"
-                  className="bg-white border-[#A3A68A]/30 text-[#A3A68A] placeholder:text-[#A3A68A]/50"
-                />
-              </div>
-              
-              {/* Humidity Input */}
-              <div className="space-y-2">
-                <label className="text-[#A3A68A] text-xs">Humidity (%)</label>
-                <Input
-                  type="number"
-                  value={humidity}
-                  onChange={(e) => setHumidity(e.target.value)}
-                  placeholder="70"
-                  className="bg-white border-[#A3A68A]/30 text-[#A3A68A] placeholder:text-[#A3A68A]/50"
-                />
-              </div>
-            </div>
-            
-            <p className="text-xs text-[#A3A68A]/70">
-              Enter values to check probability of occurrence
-            </p>
+        {/* Weather Parameter Inputs */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="text-[#A3A68A] text-sm">Temperature (°C)</label>
+            <Input
+              type="number"
+              value={temperature}
+              onChange={(e) => setTemperature(e.target.value)}
+              placeholder="25"
+              className="bg-white border-[#A3A68A]/30 text-[#A3A68A]"
+            />
           </div>
-          
-          {/* Parameter Analysis Display */}
-          <div className="bg-white/70 rounded-xl p-6 border border-[#A3A68A]/20">
-            <div className="text-center mb-4">
-              <div className="bg-[#A3A68A]/10 rounded-full p-2 w-fit mx-auto mb-2">
-                <TrendingUp className="w-8 h-8 text-[#A3A68A]/60" />
-              </div>
-              <h5 className="text-[#A3A68A] font-medium text-sm">Probability Analysis</h5>
-            </div>
-            
-            {(temperature || precipitation || windSpeed || humidity) ? (
-              <div className="space-y-3">
-                {temperature && (
-                  <div className="flex justify-between items-center bg-white/50 rounded-lg p-3">
-                    <span className="text-[#A3A68A] text-sm">Temperature {temperature}°C</span>
-                    <span className="text-[#A3A68A] font-bold text-lg">--% </span>
-                  </div>
-                )}
-                {precipitation && (
-                  <div className="flex justify-between items-center bg-white/50 rounded-lg p-3">
-                    <span className="text-[#A3A68A] text-sm">Precipitation {precipitation}mm</span>
-                    <span className="text-[#A3A68A] font-bold text-lg">--%</span>
-                  </div>
-                )}
-                {windSpeed && (
-                  <div className="flex justify-between items-center bg-white/50 rounded-lg p-3">
-                    <span className="text-[#A3A68A] text-sm">Wind Speed {windSpeed}km/h</span>
-                    <span className="text-[#A3A68A] font-bold text-lg">--%</span>
-                  </div>
-                )}
-                {humidity && (
-                  <div className="flex justify-between items-center bg-white/50 rounded-lg p-3">
-                    <span className="text-[#A3A68A] text-sm">Humidity {humidity}%</span>
-                    <span className="text-[#A3A68A] font-bold text-lg">--%</span>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <p className="text-center text-[#A3A68A]/60 text-sm">Enter parameters above</p>
-            )}
+          <div>
+            <label className="text-[#A3A68A] text-sm">Precipitation (mm)</label>
+            <Input
+              type="number"
+              value={precipitation}
+              onChange={(e) => setPrecipitation(e.target.value)}
+              placeholder="5"
+              className="bg-white border-[#A3A68A]/30 text-[#A3A68A]"
+            />
+          </div>
+          <div>
+            <label className="text-[#A3A68A] text-sm">Wind Speed (km/h)</label>
+            <Input
+              type="number"
+              value={windSpeed}
+              onChange={(e) => setWindSpeed(e.target.value)}
+              placeholder="15"
+              className="bg-white border-[#A3A68A]/30 text-[#A3A68A]"
+            />
+          </div>
+          <div>
+            <label className="text-[#A3A68A] text-sm">Humidity (%)</label>
+            <Input
+              type="number"
+              value={humidity}
+              onChange={(e) => setHumidity(e.target.value)}
+              placeholder="70"
+              className="bg-white border-[#A3A68A]/30 text-[#A3A68A]"
+            />
           </div>
         </div>
-      </div>
+
+        {/* Submit Button */}
+        <Button
+          type="submit"
+          className="w-full bg-[#A3A68A] text-white hover:bg-[#8F8F6E]"
+        >
+          Submit Prediction
+        </Button>
+      </form>
     </div>
   );
 }

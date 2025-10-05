@@ -4,8 +4,8 @@ import {
   Wind,
   CloudRain,
   AlertTriangle,
-  Flame
 } from "lucide-react";
+import { useWeatherContext } from "../context/WeatherContext";
 
 interface MetricBoxProps {
   icon: React.ReactNode;
@@ -41,64 +41,66 @@ function MetricBox({ icon, value, unit, label, range, description, color }: Metr
 }
 
 export function WeatherMetricsCard() {
+  const { data: { temperature, rain, windSpeed, humidity, heatWaveProbability } } = useWeatherContext();
+
   const metrics = [
     { 
       icon: <Thermometer className="w-5 h-5" />, 
-      value: "27", 
+      value: temperature.predicted.toFixed(2), 
       unit: "°C",
       label: "Temperature",
-      range: "Feels like 30°",
-      description: "Current temperature",
+      range: `Hi: ${temperature.upper.toFixed(2)}°C, Lo: ${temperature.lower.toFixed(2)}°C`,
+      description: `Probability: ${(temperature.probability * 100).toFixed(2)}%`,
       color: "text-red-500"
     },
     { 
       icon: <CloudRain className="w-5 h-5" />, 
-      value: "2", 
+      value: rain.predicted.toFixed(2), 
       unit: "mm",
       label: "Rain",
-      range: "Last 24 hours",
-      description: "Light showers expected",
+      range: `Hi: ${rain.upper.toFixed(2)} mm, Lo: ${rain.lower.toFixed(2)} mm`,
+      description: `Heavy Rain Probability: ${(rain.heavyRainProbability * 100).toFixed(2)}%`,
       color: "text-blue-500"
     },
     { 
       icon: <Wind className="w-5 h-5" />, 
-      value: "12", 
+      value: windSpeed.predicted.toFixed(2), 
       unit: "km/h",
-      label: "Wind Speed + Direction",
-      range: "NE Direction",
-      description: "Gentle breeze",
+      label: "Wind Speed",
+      range: `Hi: ${windSpeed.upper.toFixed(2)} km/h, Lo: ${windSpeed.lower.toFixed(2)} km/h`,
+      description: "Wind conditions",
       color: "text-gray-600"
     },
     { 
       icon: <AlertTriangle className="w-5 h-5" />, 
-      value: "Low", 
-      label: "Extreme Rain",
-      range: "Risk Level",
-      description: "No alerts active",
-      color: "text-green-500"
-    },
-    { 
-      icon: <Flame className="w-5 h-5" />, 
-      value: "Medium", 
+      value: heatWaveProbability > 0 ? "High" : "Low", 
       label: "Heat Wave",
       range: "Risk Level",
-      description: "Monitor conditions",
-      color: "text-orange-500"
+      description: `Probability: ${(heatWaveProbability * 100).toFixed(2)}%`,
+      color: heatWaveProbability > 0.5 ? "text-orange-500" : "text-green-500"
     },
     { 
       icon: <Droplets className="w-5 h-5" />, 
-      value: "72", 
+      value: humidity.predicted.toFixed(2), 
       unit: "%",
       label: "Humidity",
-      range: "Comfortable range",
-      description: "Relative humidity",
+      range: `Hi: ${humidity.upper.toFixed(2)}%, Lo: ${humidity.lower.toFixed(2)}%`,
+      description: `Probability: ${(humidity.probability * 100).toFixed(2)}%`,
       color: "text-blue-500"
+    },
+    { 
+      icon: <CloudRain className="w-5 h-5" />, 
+      value: rain.heavyRainProbability > 0.5 ? "High" : "Low", 
+      label: "Heavy Rainfall",
+      range: "Risk Level",
+      description: `Probability: ${(rain.heavyRainProbability * 100).toFixed(2)}%`,
+      color: rain.heavyRainProbability > 0.5 ? "text-orange-500" : "text-green-500"
     },
   ];
 
   return (
     <div className="bg-[#F8F5EF] rounded-2xl p-6 shadow-lg border-2 border-[#A3A68A]/30">
-      <h3 className="text-[#A3A68A] mb-6">Weather Metrics</h3>
+      <h3 className="text-[#A3A68A] mb-6 font-semibold">Weather Metrics</h3>
       <div className="grid grid-cols-2 gap-4">
         {metrics.map((metric, index) => (
           <MetricBox
