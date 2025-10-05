@@ -1,4 +1,4 @@
-import { Cloud, Calendar as CalendarIcon, TrendingUp, MapPin } from "lucide-react";
+import { Calendar as CalendarIcon, TrendingUp, MapPin } from "lucide-react";
 import { Button } from "./ui/button";
 import { Calendar } from "./ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
@@ -92,23 +92,6 @@ export function WeatherPredictionCard() {
     };
 
     mutation.mutate(formData);
-  };
-
-  const formatDate = (date: Date) => {
-    return `${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getDate().toString().padStart(2, '0')}/${date.getFullYear()}`;
-  };
-
-  const formatDisplayDate = (date: Date) => {
-    const months = ["January", "February", "March", "April", "May", "June",
-      "July", "August", "September", "October", "November", "December"];
-    return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
-  };
-
-  // Get coordinates for the selected city
-  const getSelectedCityCoordinates = () => {
-    if (!selectedCity) return null;
-    const city = cities.find(c => `${c.name}, ${c.country}` === selectedCity);
-    return city ? { lat: city.lat, lng: city.lng } : null;
   };
 
   return (
@@ -207,7 +190,7 @@ export function WeatherPredictionCard() {
             />
           </div>
           <div>
-            <label className="text-[#A3A68A] text-sm">Humidity (%)</label>
+            <label className="text-[#A3A68A] text-sm">Humidity</label>
             <Input
               type="number"
               value={humidity}

@@ -82,7 +82,7 @@ export function WeatherMetricsCard() {
     { 
       icon: <Droplets className="w-5 h-5" />, 
       value: humidity.predicted.toFixed(2), 
-      unit: "%",
+      // unit: "%",
       label: "Humidity",
       range: `Hi: ${humidity.upper.toFixed(2)}%, Lo: ${humidity.lower.toFixed(2)}%`,
       description: `Probability: ${(humidity.probability * 100).toFixed(2)}%`,
